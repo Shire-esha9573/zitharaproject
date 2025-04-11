@@ -99,7 +99,7 @@ export function AssistantProvider({ children }) {
   }, [])
 
   // Process a command and return a response
-  const processCommand = async (command) => {
+  const processCommand = async (command, products = [], cart = []) => {
     try {
       // Update context
       setContext((prev) => ({
@@ -108,26 +108,52 @@ export function AssistantProvider({ children }) {
         conversationHistory: [...prev.conversationHistory, { role: "user", content: command }],
       }))
 
-      // In a real implementation, this would call your Python backend
-      // For now, we'll simulate a response with a delay to feel more natural
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Call our local API endpoint, which will forward to the Python backend
+      const response = await fetch("/api/assistant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: command,
+          products,
+          cart,
+          user_id: "anonymous", // You can replace this with actual user ID if available
+        }),
+        cache: "no-store", // Ensure we don't cache responses
+      })
 
-      // Simulate API response
-      const response = {
-        message: `I processed your command: "${command}"`,
-        action: null,
+      if (!response.ok) {
+        throw new Error(`Backend request failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log("Backend response:", data)
+
+      // Check if there's an error in the response
+      if (data.error) {
+        throw new Error(data.error)
       }
 
       // Update context with response
       setContext((prev) => ({
         ...prev,
-        conversationHistory: [...prev.conversationHistory, { role: "assistant", content: response.message }],
+        conversationHistory: [...prev.conversationHistory, { role: "assistant", content: data.message }],
       }))
 
-      return response
+      return {
+        message: data.message,
+        action: data.action,
+        products: data.products,
+      }
     } catch (error) {
       console.error("Error processing command:", error)
-      throw error
+
+      // Fallback response if backend is unavailable
+      return {
+        message: "I'm having trouble connecting to my backend. Please try again later or use the website navigation.",
+        action: null,
+      }
     }
   }
 
