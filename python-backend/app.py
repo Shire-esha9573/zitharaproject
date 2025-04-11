@@ -20,7 +20,7 @@ nltk.download('wordnet')
 nltk.download('vader_lexicon')
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, origins=["https://zitharaproject-1.onrender.com"])  # Enable CORS for all routes
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
